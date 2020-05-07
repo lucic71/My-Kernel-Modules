@@ -1,7 +1,7 @@
 procfs1.c
 ---------
 
-This program creates a 'helloworld' file in the proc file system. This is done
+This module creates a 'helloworld' file in the proc file system. This is done
 using proc_create function. For deleting this file the proc_remove function is
 used.
 
@@ -13,4 +13,4 @@ The write is implemented in proc_write and the argument description is
 specified in the code comments. Same happens for read which is implemented
 using proc_read.
 
-Also the module print KERN_DEBUG messages which can be consulted using dmesg.
+Also the module prints KERN_DEBUG messages which can be consulted using dmesg.
