@@ -1,0 +1,16 @@
+procfs1.c
+---------
+
+This program creates a 'helloworld' file in the proc file system. This is done
+using proc_create function. For deleting this file the proc_remove function is
+used.
+
+The proc file supports read and write operations. Both write and read from the
+global variable integer_from_user. To tell the kernel which functions to link
+for write and read, a struct file_operations is defined at line 180.
+
+The write is implemented in proc_write and the argument description is
+specified in the code comments. Same happens for read which is implemented
+using proc_read.
+
+Also the module print KERN_DEBUG messages which can be consulted using dmesg.
