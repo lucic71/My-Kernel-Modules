@@ -1,0 +1,30 @@
+hello-1.c
+---------
+
+This is a simple module that has an init_module and a cleanup_module, used
+for entering and exiting the module.
+
+hello-2.c
+---------
+
+This is a module that has additional informations using the macros:
+MODULE_LICENSE
+MODULE_AUTHOR
+MODULE_DESCRIPTION.
+
+Moreover it uses module_init and module_exit to tell the compiler the entry
+point and the exit point.
+
+hello-3.c
+---------
+
+This module uses command line parameters.
+
+start.c stop.c
+--------------
+
+We can specify the entry point and the exit point in different files. The
+Makefile will handle this and link them correctly using this lines:
+
+obj-m += startstop.o
+startstop-objs := start.o stop.o
