@@ -38,20 +38,20 @@
  * 	kernel
  *
  */
-#define IOCTL_SET_MSG _IOR(MAJOR, 0, char *)
+#define IOCTL_SET_MSG _IOR(CHRDEV_MAJOR, 0, char *)
 
 /*
  * Get the message of the device driver. This IOCTL is used for output, to get
  * the message of the device driver.
  *
  */
-#define IOCTL_GET_MSG _IOR(MAJOR, 1, char *)
+#define IOCTL_GET_MSG _IOR(CHRDEV_MAJOR, 1, char *)
 
 /*
  * Get the n-th byte of the message. This IOCTL is used for both input and
  * output, It receives from the user a number, n, and returns Message[n].
  *
  */
-#define IOCTL_GET_NTH_BYTE _IOWR(MAJOR, 2, int)
+#define IOCTL_GET_NTH_BYTE _IOWR(CHRDEV_MAJOR, 2, int)
 
 #endif
