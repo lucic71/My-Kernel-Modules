@@ -44,7 +44,6 @@ static char *Message_Pointer;
 
 static int device_open(struct inode *inode, struct file *file) {
 
-	printk(KERN_INFO "device_open(%p)\n", file);
 
 	/*
 	 * Make the device busy until the operation is finished.
@@ -52,9 +51,11 @@ static int device_open(struct inode *inode, struct file *file) {
 	 */
 
 	if (Device_Open) {
+		printk(KERN_INFO "device is busy\n");
 		return -EBUSY;
 	}
 
+	printk(KERN_INFO "device_open(%p)\n", file);
 	Device_Open = 1;
 
 	/*
@@ -78,15 +79,16 @@ static int device_release(struct inode *inode, struct file *file) {
 	 * Make the device available.
 	 *
 	 */
+	printk(KERN_INFO "device released\n");
 
-	Device_Open = 1;
+	Device_Open = 0;
 
 	return SUCCESS;
 
 }
 
 /*
- * This is called whenever a proess which has already opened the device
+ * This is called whenever a process which has already opened the device
  * file attempts to read from it.
  *
  * The read is from the perspective of the user.
@@ -149,6 +151,8 @@ static int device_read(struct file *file, char __user *buffer, size_t length,
 /*
  * This function is called whenever someone tries to write to our device.
  *
+ * The write is from the perspective of the user.
+ *
  */
 
 static ssize_t device_write(struct file *file, const char __user *buffer, 
@@ -190,7 +194,8 @@ static ssize_t device_write(struct file *file, const char __user *buffer,
  * 1. struct inode holds data about a file or a directory on disk
  * 2. struct file holds data about an open file/socket etc
  * 3. the ioctl number
- * 4. the parameter given to the ioctl function
+ * 4. the parameter given to the ioctl function, it's strange that it is a
+ * 	unsigned long and not a void *
  *
  * More info about the first two structures can be found at:
  * http://books.gigatux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec6.html
@@ -198,15 +203,19 @@ static ssize_t device_write(struct file *file, const char __user *buffer,
  *
  */
 
-int device_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num,
+long device_ioctl(struct file *file, unsigned int ioctl_num,
 	unsigned long ioctl_param) {
 
 	/*
 	 * Description
 	 * -----------
 	 *
-	 * i - used for interating in IOCTL_SET_MSG
-	 * buf_len - keeps the length of the message coming from user space
+	 * i    - used for interating in IOCTL_SET_MSG (it will contain the
+	 * 	length of the message contained in *ioctl_param at the end
+	 * 	of the iteration)
+	 *
+	 * ch   - it is used to read the ioctl_param one byte at a time
+	 *
 	 * temp - char pointer to ioctl_param used for receiving the message
 	 * 	from user space
 	 *
@@ -216,7 +225,7 @@ int device_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num,
 	 
 
 	int i;
-	char buf_len;
+	char ch;
 	char *temp;
 
 	/*
@@ -238,11 +247,66 @@ int device_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num,
 			temp = (char *) ioctl_param;
 
 			/*
-			 * Find the length of the message.
+			 * Find the length of the message by reading bytes from
+			 * temp until a 0 byte is encountered.
 			 *
 			 */
 
-			get_user(buf_len, temp);
+			get_user(ch, temp);
+			for (i = 0; ch && i < BUFLEN; i++, temp++) {
+				get_user(ch, temp);
+			}
+
+			/*
+			 * Write the message from ioctl_param in our internal
+			 * message.
+			 *
+			 */
+
+			device_write(file, (char *) ioctl_param, i, 0);
+
+			break;
+
+		case IOCTL_GET_MSG:
+
+			/*
+			 * Give the internal message to the calling process.
+			 * The parameter we will be receiving is a pointer that
+			 * must be filled with bytes from our message.
+			 *
+			 */
+
+			i = device_read(file, (char *) ioctl_param, BUFLEN, 0);
+
+			/*
+			 * Put a 0 at the end of the buffer.
+			 *
+			 */
+
+			put_user(0, (char *) ioctl_param + i);
+
+			break;
+
+		case IOCTL_GET_NTH_BYTE:
+			
+			/*
+			 * Now ioctl_param must be interpreted as an integer used
+			 * to index in Message.
+			 *
+			 */
+
+			/*
+			 * Boundary check.
+			 *
+			 */
+
+			if (ioctl_param > BUFLEN - 1 || ioctl_param < 0) {
+				return -EINVAL;
+			}
+
+			return Message[ioctl_param];
+			
+			break;
 
 	}
 
@@ -261,13 +325,25 @@ int device_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num,
  * this structure, please see:
  * https://www.tldp.org/LDP/lkmpg/2.4/html/c577.htm
  *
+ * From my understanding this signatures are deprecated since 2.4.2 because
+ * the file_operations structure no longer uses a ioctl field. ioctl is
+ * one of the remaining parts of the kernel which runs under 
+ * Big Kernel Lock.
+ *
+ * In newer versions of kernel the unlocked_ioctl is used to increase
+ * performance.
+ *
+ * See this link for more details:
+ * https://unix.stackexchange.com/questions/4711/what-is-the-difference-between-ioctl-unlocked-ioctl-and-compat-ioctl
+ *
  */
 
 struct file_operations Fops = {
 	.open    = device_open,
 	.release = device_release,
-	.read  = device_read,
-	.write = device_write
+	.read    = device_read,
+	.write   = device_write,
+	.unlocked_ioctl   = device_ioctl
 };
 
 int init_module() {
@@ -312,4 +388,5 @@ void cleanup_module() {
 	 */
 
 	unregister_chrdev(CHRDEV_MAJOR, DEVICE_NAME);
+
 }
