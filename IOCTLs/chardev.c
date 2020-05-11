@@ -130,7 +130,7 @@ static int device_read(struct file *file, char __user *buffer, size_t length,
 		 *
 		 */
 
-		put_user(*(Message_Pointer), buffer++);
+		put_user(*(Message_Pointer++), buffer++);
 
 		length--;
 		written_bytes++;
@@ -276,7 +276,7 @@ long device_ioctl(struct file *file, unsigned int ioctl_num,
 			 *
 			 */
 
-			i = device_read(file, (char *) ioctl_param, BUFLEN, 0);
+			i = device_read(file, (char *) ioctl_param, BUFLEN - 1, 0);
 
 			/*
 			 * Put a 0 at the end of the buffer.
@@ -388,5 +388,6 @@ void cleanup_module() {
 	 */
 
 	unregister_chrdev(CHRDEV_MAJOR, DEVICE_NAME);
+	printk(KERN_INFO "device unregistered\n");
 
 }
