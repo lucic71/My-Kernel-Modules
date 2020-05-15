@@ -25,6 +25,13 @@ static char Message[MESSAGE_LEN];
  */
 
 #define PROC_FILE_NAME "sleep"
+
+/*
+ * Still unclear how this permissions work because I set them to 0000 and
+ * the module still received and gave data when asked.
+ *
+ */
+
 #define PERMISSIONS    0644
 
 /*
@@ -46,7 +53,9 @@ DECLARE_WAIT_QUEUE_HEAD(WaitQueue);
  *
  */
 
-static int proc_open(struct inode *inde, struct file *file) {
+static int proc_open(struct inode *inode, struct file *file) {
+
+	printk(KERN_DEBUG "open operation for /proc/%s triggered\n", PROC_FILE_NAME);
 
 	/*
 	 * IF the file's flags include O_NONBLOCK it means that the process does
@@ -56,6 +65,7 @@ static int proc_open(struct inode *inde, struct file *file) {
 	 */
 
 	if ((file->f_flags & O_NONBLOCK) && FileOpen) {
+		printk(KERN_DEBUG "Process rejected because it was nonblocking\n");
 		return -EAGAIN;
 	}
 
@@ -126,11 +136,14 @@ static int proc_open(struct inode *inde, struct file *file) {
 	 */
 
 	FileOpen = 1;
+	printk(KERN_DEBUG "open operation for /proc/%s was successful\n", PROC_FILE_NAME);
 
 	return 0;
 }
 
 static int proc_close(struct inode *inode, struct file *file) {
+
+	printk(KERN_DEBUG "close operation for /proc/%s triggered\n", PROC_FILE_NAME);
 
 	/*
 	 * Set FileOpen to zero, so one of the processes in WaitQueue will be
@@ -148,6 +161,7 @@ static int proc_close(struct inode *inode, struct file *file) {
 
 	wake_up(&WaitQueue);
 
+	printk(KERN_DEBUG "close operation for /proc/%s was successful\n", PROC_FILE_NAME);
 	return 0;
 
 }
@@ -156,6 +170,8 @@ static ssize_t proc_write(struct file *file, const char __user *buffer,
 	size_t length, loff_t *offset) {
 
 	int i;
+
+	printk(KERN_DEBUG "write operation for /proc/%s triggered\n", PROC_FILE_NAME);
 
 	/*
 	 * Put buffer in Message.
@@ -173,15 +189,19 @@ static ssize_t proc_write(struct file *file, const char __user *buffer,
 	 *
 	 */
 
+	printk(KERN_DEBUG "write operation for /proc/%s was successful\n", PROC_FILE_NAME);
 	return i;
 }
 
 static ssize_t proc_read(struct file *file, char __user *buffer,
 	size_t length, loff_t *offset) {
 
+
 	static int finished = 0;
 	int i;
 	char message[MESSAGE_LEN + 30];
+
+	printk(KERN_DEBUG "read operation for /proc/%s triggered\n", PROC_FILE_NAME);
 
 	/*
 	 * Return 0 to signify EOF, we have nothing more to say at this
@@ -191,6 +211,8 @@ static ssize_t proc_read(struct file *file, char __user *buffer,
 
 	if (finished) {
 		finished = 0;
+
+		printk(KERN_DEBUG "There is nothing to give at the moment\n");
 		return 0;
 	}
 
@@ -207,6 +229,8 @@ static ssize_t proc_read(struct file *file, char __user *buffer,
 	 */
 
 	finished = 1;
+
+	printk(KERN_DEBUG "read operation for /proc/%s was successful\n", PROC_FILE_NAME);
 	return i;
 
 }
